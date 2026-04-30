@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v1</h3>
+    <h3>Acesso v2</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -400,48 +400,48 @@ async function realizarLogin() {
     const passField = document.getElementById('login-pass');
     const transpField = document.getElementById('login-transp');
 
-    // 2. Padronização Case-Insensitive e limpeza de espaços
-    // Login (Col E) e Transportadora (Col I) serão comparados em minúsculas no Backend
+    // 2. Padronização Case-Insensitive (Blindagem de digitação)
     const email = emailField.value.trim().toLowerCase();
     const senha = passField.value.trim(); 
-    const transp = transpField.value.trim().toLowerCase();
+    // Enviamos a transportadora em minúsculo para o Backend comparar sem erro de caixa
+    const transpParaServidor = transpField.value.trim().toLowerCase();
 
-    if (!email || !senha || !transp) {
+    if (!email || !senha || !transpParaServidor) {
         if (typeof tocarBeep === 'function') tocarBeep('erro');
         return alert("⚠️ Por favor, preencha E-mail, Senha e selecione a Transportadora.");
     }
 
-    // 3. Início do feedback visual e bloqueio do botão
+    // 3. Feedback visual (Spinner)
     btn.disabled = true;
     const originalText = btn.innerHTML;
     btn.innerHTML = '<div class="spinner"></div> Autenticando...';
     
     if (typeof enviandoDados !== 'undefined') enviandoDados = true;
 
-    // 4. Montagem da URL (Parâmetros codificados para evitar erros com caracteres especiais)
-    const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}&transp=${encodeURIComponent(transp)}`;
+    // 4. Montagem da URL (Enviando transp já em minúsculo)
+    const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}&transp=${encodeURIComponent(transpParaServidor)}`;
 
     try {
         const res = await fetch(url);
         const data = await res.json(); 
 
         if (data.authorized) {
-            // SUCESSO: Login (Col E), Senha (Col C) e Regional (Col I) coincidem
+            // SUCESSO: Login (Col E), Senha (Col C) e Regional (Col I) validados
             if (typeof tocarBeep === 'function') tocarBeep('sucesso');
             
             alert("✅ Bem-vindo(a), " + data.nome);
             
-            // Injeta dados na tela principal (Conferente e Transportadora)
+            // Injeta dados na tela principal
             const campoUsuario = document.getElementById('usuario');
             const campoTransp = document.getElementById('transp');
             
             if (campoUsuario) campoUsuario.value = data.nome;
-            // Injetamos o valor original do Select para manter o nome exato da Transportadora
+            // IMPORTANTE: Aqui injetamos o nome ORIGINAL (ex: "Alpha") para relatórios
             if (campoTransp) campoTransp.value = transpField.value; 
             
             showScreen('screen-main');
         } else {
-            // ERRO DE VALIDAÇÃO (Ex: Vínculo incorreto ou Senha errada)
+            // ERRO: Exibe a mensagem específica do Backend (ex: vínculo incorreto)
             if (typeof tocarBeep === 'function') tocarBeep('erro');
             alert(data.error || "❌ Usuário ou senha incorretos.");
             
@@ -449,15 +449,13 @@ async function realizarLogin() {
             btn.innerHTML = originalText;
         }
     } catch (err) {
-        // ERRO DE CONEXÃO OU CORS
-        console.error("Erro técnico Apps Script:", err);
-        alert("🌐 Erro na comunicação com o servidor. Verifique o sinal de internet ou o Deploy do Google.");
+        console.error("Erro técnico:", err);
+        alert("🌐 Erro na comunicação. Verifique se o Script do Google está publicado corretamente.");
         
         btn.disabled = false;
         btn.innerHTML = originalText;
         if (typeof tocarBeep === 'function') tocarBeep('erro');
     } finally {
-        // Libera a trava para futuras tentativas
         if (typeof enviandoDados !== 'undefined') enviandoDados = false;
     }
 }
