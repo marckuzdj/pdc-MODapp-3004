@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v12</h3>
+    <h3>Acesso v13</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -497,7 +497,6 @@ async function solicitarRecuperacao() {
     }
 }
 
-// --- FUNÇÃO DE CADASTRO COM SPINNER E TRAVA ---
 async function cadastrar() {
     if (typeof processandoCadastro !== 'undefined' && processandoCadastro) return;
 
@@ -520,7 +519,7 @@ async function cadastrar() {
     const url = `${urlSheets}?action=salvarNovoUsuario&nome=${encodeURIComponent(nome)}&documento=${encodeURIComponent(doc)}&email=${encodeURIComponent(email)}&transp=${encodeURIComponent(transp)}&senha=${encodeURIComponent(senha)}`;
 
     try {
-        // --- MUDANÇA CHAVE: Usamos fetchJSONP para ler se deu SUCESSO ou ERRO ---
+        // --- TÉCNICA JSONP: Permite ler a resposta de erro sem bloqueio de CORS ---
         const resJson = await fetchJSONP(url);
 
         if (resJson.success) {
@@ -528,23 +527,24 @@ async function cadastrar() {
             alert("✅ Cadastro realizado com sucesso!");
             location.reload();
         } else {
-            // AQUI ele vai mostrar: "Acesso Negado: Este e-mail já possui cadastro..."
+            // AQUI ele mostrará: "Acesso Negado: Este e-mail já possui cadastro..."
             if(typeof tocarBeep === 'function') tocarBeep('erro');
-            alert("❌ Erro: " + resJson.error);
+            alert("❌ " + resJson.error);
             
-            // Libera o botão para o usuário corrigir o e-mail
+            // Libera o botão para o usuário tentar outro e-mail
             processandoCadastro = false;
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
     } catch (err) {
         console.error("Erro no cadastro:", err);
-        alert("🌐 Erro na comunicação com o servidor.");
+        alert("🌐 Erro na comunicação. Verifique se a função fetchJSONP está no seu código.");
         processandoCadastro = false;
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
 }
+
 
 
 
