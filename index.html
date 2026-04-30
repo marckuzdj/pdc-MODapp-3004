@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v11</h3>
+    <h3>Acesso v12</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -498,7 +498,7 @@ async function solicitarRecuperacao() {
 }
 
 // --- FUNÇÃO DE CADASTRO COM SPINNER E TRAVA ---
-function cadastrar() {
+async function cadastrar() {
     if (typeof processandoCadastro !== 'undefined' && processandoCadastro) return;
 
     const btn = document.getElementById('btn-cadastrar');
@@ -506,30 +506,46 @@ function cadastrar() {
     const doc = document.getElementById('reg-doc').value.trim();
     const email = document.getElementById('reg-email').value.trim().toLowerCase();
     const transp = document.getElementById('reg-transp-list').value;
-    const senha = document.getElementById('reg-pass').value.trim();
-    const senha2 = document.getElementById('reg-pass2').value.trim();
+    const senha = document.getElementById('reg-pass').value.trim().toLowerCase();
+    const senha2 = document.getElementById('reg-pass2').value.trim().toLowerCase();
 
     if (!nome || !doc || !email || !transp || !senha) return alert("⚠️ Preencha todos os campos!");
     if (senha !== senha2) return alert("❌ As senhas não conferem!");
 
-    // Feedback visual
     processandoCadastro = true;
     btn.disabled = true;
-    btn.innerHTML = '<div class="spinner"></div> Gravando...';
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner"></div> Gravando Registro...';
 
     const url = `${urlSheets}?action=salvarNovoUsuario&nome=${encodeURIComponent(nome)}&documento=${encodeURIComponent(doc)}&email=${encodeURIComponent(email)}&transp=${encodeURIComponent(transp)}&senha=${encodeURIComponent(senha)}`;
 
-    // MÉTODO "DISPARA E ESQUECE" (Bypass total de erro de comunicação)
-    const img = new Image(); 
-    img.src = url; // O navegador tenta carregar a URL como imagem, o Google recebe os dados e grava.
+    try {
+        // --- MUDANÇA CHAVE: Usamos fetchJSONP para ler se deu SUCESSO ou ERRO ---
+        const resJson = await fetchJSONP(url);
 
-    // Após 2.5 segundos, avisamos o sucesso (pois você confirmou que o Google grava rápido)
-    setTimeout(() => {
-        if(typeof tocarBeep === 'function') tocarBeep('sucesso');
-        alert("✅ Cadastro realizado com sucesso!");
-        location.reload(); 
-    }, 2500);
+        if (resJson.success) {
+            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
+            alert("✅ Cadastro realizado com sucesso!");
+            location.reload();
+        } else {
+            // AQUI ele vai mostrar: "Acesso Negado: Este e-mail já possui cadastro..."
+            if(typeof tocarBeep === 'function') tocarBeep('erro');
+            alert("❌ Erro: " + resJson.error);
+            
+            // Libera o botão para o usuário corrigir o e-mail
+            processandoCadastro = false;
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    } catch (err) {
+        console.error("Erro no cadastro:", err);
+        alert("🌐 Erro na comunicação com o servidor.");
+        processandoCadastro = false;
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
+
 
 
 
