@@ -353,17 +353,23 @@ async function iniciarConferencia() {
     }
 }
 
-// --- 3. CARREGAMENTO INICIAL (WINDOW.ONLOAD) ---
+// --- 3. CARREGAMENTO INICIAL (WINDOW.ONLOAD) - VERSÃO RESILIENTE A CORS ---
 window.onload = function() {
-    // Carregar Romaneios
-    fetch(urlSheets + "?action=getRomaneios")
-        .then(res => res.json())
+    console.log("Iniciando carregamento de dados do servidor...");
+
+    // 1. Carregar Romaneios (Para o Select da Tela Principal)
+    fetch(urlSheets + "?action=getRomaneios", { redirect: "follow" })
+        .then(res => {
+            if (!res.ok) throw new Error("Erro na rede ao buscar romaneios");
+            return res.json();
+        })
         .then(data => {
             dadosCompletos = data;
             const select = document.getElementById("romaneio");
             if (select) {
                 select.innerHTML = '<option value="">Selecione o Romaneio</option>';
                 data.forEach(item => {
+                    // Só mostra romaneios que ainda não foram conferidos
                     if (!item.Conferencia || item.Conferencia.toString().trim() === "") {
                         let opt = document.createElement("option");
                         opt.value = item.Romaneio;
@@ -371,22 +377,33 @@ window.onload = function() {
                         select.appendChild(opt);
                     }
                 });
+                console.log("✅ Romaneios carregados.");
             }
-        });
+        })
+        .catch(err => console.error("❌ Erro CORS/Rede Romaneios:", err));
 
-    // Carregar Transportadoras
-    fetch(urlSheets + "?action=getTransportadoras")
-        .then(res => res.json())
+    // 2. Carregar Transportadoras (Para os Combos de Login e Cadastro)
+    fetch(urlSheets + "?action=getTransportadoras", { redirect: "follow" })
+        .then(res => {
+            if (!res.ok) throw new Error("Erro na rede ao buscar transportadoras");
+            return res.json();
+        })
         .then(lista => {
             const ids = ['login-transp', 'reg-transp-list'];
             const optionsHtml = '<option value="">Selecione a Transportadora</option>' + 
                                lista.map(t => `<option value="${t}">${t}</option>`).join('');
+            
             ids.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.innerHTML = optionsHtml;
+                if (el) {
+                    el.innerHTML = optionsHtml;
+                }
             });
-        });
+            console.log("✅ Transportadoras carregadas.");
+        })
+        .catch(err => console.error("❌ Erro CORS/Rede Transportadoras:", err));
 };
+
 
 // --- 4. ROTINA DE LOGIN E CADASTRO ---
 // --- FUNÇÃO DE LOGIN COM SPINNER, VALIDAÇÃO DE TRANSPORTADORA E CASE-INSENSITIVE ---
