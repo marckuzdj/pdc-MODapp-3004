@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v8</h3>
+    <h3>Acesso v9</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -522,29 +522,29 @@ async function cadastrar() {
 
     const url = `${urlSheets}?action=salvarNovoUsuario&nome=${encodeURIComponent(nome)}&documento=${encodeURIComponent(doc)}&email=${encodeURIComponent(email)}&transp=${encodeURIComponent(transp)}&senha=${encodeURIComponent(senha)}`;
 
+    // ... dentro da função cadastrar() ...
     try {
-        // --- MUDANÇA CHAVE: Usamos fetchJSONP para ler a resposta real ---
+        // TROQUE: const res = await fetch(url);
+        // POR:
         const resJson = await fetchJSONP(url);
-
+    
         if (resJson.success) {
             alert("✅ Cadastro realizado com sucesso!");
             location.reload();
         } else {
-            // AQUI ELE VAI MOSTRAR O ERRO REAL (ex: "E-mail já cadastrado!")
+            // Agora ele vai conseguir ler a mensagem de "E-mail duplicado" vinda do Google
             alert("❌ Erro: " + resJson.error);
-            
-            // Libera o botão para o usuário corrigir o dado
             processandoCadastro = false;
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
     } catch (err) {
-        console.error("Erro no envio:", err);
         alert("🌐 Erro na comunicação com o servidor.");
         processandoCadastro = false;
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
+
 }
 
 
