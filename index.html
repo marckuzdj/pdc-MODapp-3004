@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v21</h3>
+    <h3>Acesso v22</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -629,26 +629,26 @@ function resetBotaoCadastro(btn, textoOriginal) {
 
 
 
-// --- 5. LOGICA DE CONFERÊNCIA (SINCRO AUTOMÁTICA SEM VALIDAÇÃO DE PLACA) ---
+// --- 5. LOGICA DE CONFERÊNCIA (SINCRO COM ÂNCORA DE PROGRESSO) ---
 async function atualizarDadosExtras() {
     const selectedId = document.getElementById("romaneio").value;
     const btnIniciar = document.getElementById("btnIniciar");
     const statusInfo = document.getElementById("status-info");
     
-    // Busca os dados do romaneio no array global
+    // Busca os dados do romaneio no array global (carregado no login/abertura)
     const info = dadosCompletos.find(r => r.Romaneio === selectedId);
 
     if (info) {
-        // Preenche os campos informativos automaticamente
+        // Preenche campos informativos
         document.getElementById("campo_operador").value = info.Operador || "";
         document.getElementById("transp").value = info.Transp || "";
-        document.getElementById("total_pedidos").value = info.TTPedidos || 0;
+        const totalPedidos = parseInt(info.TTPedidos) || 0;
+        document.getElementById("total_pedidos").value = totalPedidos;
         document.getElementById("total_volumes").value = info.TTvols || 0;
 
-        // Feedback visual de que a sincronização começou
         if (statusInfo) {
             statusInfo.innerText = "⏳ Sincronizando dados com o servidor...";
-            statusInfo.style.background = "#fff3cd"; // Amarelo (Atenção)
+            statusInfo.style.background = "#fff3cd";
             statusInfo.style.display = "block";
         }
         
@@ -656,29 +656,38 @@ async function atualizarDadosExtras() {
         btnIniciar.innerText = "Sincronizando...";
 
         try {
-            // Busca as pendências reais no Backend (Apps Script)
+            // Busca o que falta no Google Sheets em tempo real
             const response = await fetch(`${urlSheets}?action=verificarPendencias&romaneio=${encodeURIComponent(selectedId)}`);
             const result = await response.json();
 
             if (result.faltantes) {
-                const totalPedidos = parseInt(info.TTPedidos) || 0;
                 const qtdFaltantes = result.faltantes.length;
+                
+                // --- A ÂNCORA DE PROGRESSO ---
+                // jaLidosNoSheets = Tudo que já está com "OK" na planilha
                 const jaLidosNoSheets = totalPedidos - qtdFaltantes;
 
-                // Atualiza o progresso visual na tela
+                // Limpa a lista de bips da sessão atual (memória local)
                 codigosLidos = []; 
-                document.getElementById("contador").innerText = jaLidosNoSheets;
+
+                // Atualiza o contador visual na tela
+                const contadorEl = document.getElementById("contador");
+                contadorEl.innerText = jaLidosNoSheets;
                 
+                // DEFINE A BASE: Este atributo impede que o progresso resete no ScanSuccess
+                contadorEl.setAttribute("data-base", jaLidosNoSheets);
+                
+                // Atualiza a barra de progresso com o histórico recuperado
                 if (typeof atualizarBarraProgresso === "function") {
                     atualizarBarraProgresso(jaLidosNoSheets); 
                 }
 
-                // --- TRAVA: SE NÃO HOUVER NADA PARA LER ---
+                // TRAVA: Se não houver nada pendente, bloqueia o botão de iniciar
                 if (qtdFaltantes === 0) {
                     alert("✅ Este romaneio já está 100% CONCLUÍDO!");
                     if (statusInfo) {
                         statusInfo.innerText = "✅ ROMANEIO CONCLUÍDO";
-                        statusInfo.style.background = "#d4edda"; // Verde
+                        statusInfo.style.background = "#d4edda";
                     }
                     btnIniciar.innerText = "CONCLUÍDO";
                     btnIniciar.disabled = true;
@@ -688,7 +697,6 @@ async function atualizarDadosExtras() {
                 }
             }
             
-            // Sucesso: Existem pendências, libera o botão para iniciar o trabalho
             if (statusInfo) {
                 statusInfo.innerText = "✅ Sincronização concluída!";
                 statusInfo.style.background = "#d4edda";
@@ -703,11 +711,10 @@ async function atualizarDadosExtras() {
             alert("⚠️ Erro ao sincronizar dados. Tente selecionar o romaneio novamente.");
             btnIniciar.disabled = false;
             btnIniciar.innerText = "Tentar Sincronizar";
-            if (statusInfo) statusInfo.style.display = "none";
         }
         
     } else {
-        // Se desmarcar o romaneio, limpa a tela
+        // Se desmarcar o romaneio, limpa os campos
         if(typeof limparCamposExtras === 'function') limparCamposExtras();
         if (statusInfo) statusInfo.style.display = "none";
     }
@@ -734,7 +741,7 @@ function tocarBeep(tipo) {
     osc.stop(audioCtx.currentTime + 0.5);
 }
 
-// --- FUNÇÃO DE SCAN (Alta Performance + Sheets Realtime + Beep + Barra) ---
+// --- FUNÇÃO DE SCAN ADAPTADA (PROGRESSO ACUMULADO) ---
 async function onScanSuccess(decodedText) {
     if (validandoAgora) return;
 
@@ -742,11 +749,15 @@ async function onScanSuccess(decodedText) {
     const romaneioVal = document.getElementById("romaneio").value;
     const usuario = document.getElementById("usuario").value;
     const status = document.getElementById("status-info");
+    
+    // 1. RECUPERAÇÃO DA ÂNCORA: Lê o histórico sincronizado do Sheets
+    const contadorEl = document.getElementById("contador");
+    const jaLidosNoSheets = parseInt(contadorEl.getAttribute("data-base")) || 0;
 
-    // Validações locais rápidas
+    // Validação local rápida (evita processar o mesmo item duas vezes na mesma sessão)
     if (codigosLidos.includes(barcodeLimpo)) {
-        tocarBeep('erro');
-        status.innerText = "⚠️ JÁ LIDO: " + barcodeLimpo;
+        if(typeof tocarBeep === 'function') tocarBeep('erro');
+        status.innerText = "⚠️ JÁ LIDO AGORA: " + barcodeLimpo;
         status.style.background = "#fff3cd";
         return;
     }
@@ -755,48 +766,62 @@ async function onScanSuccess(decodedText) {
     status.innerText = "🔍 Validando: " + barcodeLimpo + "...";
 
     try {
-    // Dentro da função onScanSuccess, onde você define os params:
-    const params = new URLSearchParams({
-        action: "validarBarcode",
-        barcode: barcodeLimpo,
-        romaneio: romaneioVal,
-        conferente: usuario,
-        confirmado: "OK",
-        // Adicionamos o campo exato que o Backend precisa processar
-        data_conferencia: new Date().toLocaleString("pt-BR") 
-    });
+        const params = new URLSearchParams({
+            action: "validarBarcode",
+            barcode: barcodeLimpo,
+            romaneio: romaneioVal,
+            conferente: usuario,
+            confirmado: "OK",
+            data_conferencia: new Date().toLocaleString("pt-BR") 
+        });
 
-        // Chamada em tempo real para o Sheets
         const response = await fetch(`${urlSheets}?${params.toString()}`);
         const result = await response.json();
 
         if (result.valid) {
-            tocarBeep('sucesso'); // Seu beep sintético
+            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
             codigosLidos.push(barcodeLimpo);
 
-            // Atualiza Contador e Barra de Progresso
-            document.getElementById("contador").innerText = codigosLidos.length;
-            atualizarBarraProgresso(); 
+            // --- CÁLCULO DO PROGRESSO REAL ACUMULADO ---
+            const totalAcumulado = jaLidosNoSheets + codigosLidos.length;
+            
+            // Atualiza Contador e Barra de Progresso com o Total Real
+            contadorEl.innerText = totalAcumulado;
+            if (typeof atualizarBarraProgresso === "function") {
+                atualizarBarraProgresso(totalAcumulado); 
+            }
 
-            // Adiciona na lista visual
+            // Atualiza a lista visual com o número do item na carga
             const lista = document.getElementById("itens-lidos");
-            lista.innerHTML = `<div class="item-codigo"><span>${barcodeLimpo}</span> <span style="color:var(--success)">✓</span></div>` + lista.innerHTML;
+            lista.innerHTML = `
+                <div class="item-codigo">
+                    <b>Item ${totalAcumulado}</b> de ${document.getElementById("total_pedidos").value}<br>
+                    <span>${barcodeLimpo}</span> <span style="color:var(--success)">✓</span>
+                </div>` + lista.innerHTML;
 
             status.innerText = "✅ VALIDADO E ATUALIZADO";
             status.style.background = "#d4edda";
         } else {
-            tocarBeep('erro');
+            if(typeof tocarBeep === 'function') tocarBeep('erro');
             status.innerText = "❌ " + (result.error || "INVÁLIDO");
             status.style.background = "#f8d7da";
         }
     } catch (error) {
-        tocarBeep('erro');
+        if(typeof tocarBeep === 'function') tocarBeep('erro');
         status.innerText = "🌐 Erro de conexão";
     } finally {
-        setTimeout(() => { validandoAgora = false; }, 1000); // Delay curto para leitura rápida
+        // Rotina específica para Desktop/Leitor USB
+        const inputUSB = document.getElementById("input-usb");
+        if (inputUSB) {
+            inputUSB.value = "";
+            inputUSB.focus();
+        }
+        // Delay para evitar leituras duplicadas por trepidação do leitor
+        setTimeout(() => { validandoAgora = false; }, 800); 
     }
 }
 
+    
     // --- LÓGICA DA BARRA (Meta: total_pedidos) ---
     function atualizarBarraProgresso(valorManual = null) {
         const totalPedidos = parseInt(document.getElementById('total_pedidos').value) || 0;
