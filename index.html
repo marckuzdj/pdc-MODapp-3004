@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v5</h3>
+    <h3>Acesso v6</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -517,7 +517,7 @@ async function cadastrar() {
         // aguardamos 1.5 segundos para garantir que o Google processou a gravação
         setTimeout(() => {
             if(typeof tocarBeep === 'function') tocarBeep('sucesso');
-            alert("✅ Solicitação enviada!\nSe os dados estiverem corretos, seu acesso será liberado.");
+            alert("✅ Cadastro Realizado!\nVocê será redirecionado para realizar o Login.");
             location.reload(); 
         }, 1500);
 
