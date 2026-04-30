@@ -461,32 +461,50 @@ window.onload = function() {
     }
 
 
-// --- NOVA FUNÇÃO: SOLICITAR RECUPERAÇÃO ---
+// --- FUNÇÃO: SOLICITAR RECUPERAÇÃO DE SENHA (Case-Insensitive) ---
 async function solicitarRecuperacao() {
-    const email = document.getElementById('recup-email').value.trim().toLowerCase();
+    const emailField = document.getElementById('recup-email');
     const btn = document.getElementById('btn-recuperar');
+    
+    // Normaliza para minúsculas e remove espaços
+    const email = emailField.value.trim().toLowerCase();
 
-    if (!email) return alert("Informe seu e-mail de cadastro!");
+    if (!email) {
+        if(typeof tocarBeep === 'function') tocarBeep('erro');
+        return alert("⚠️ Por favor, informe seu e-mail de cadastro!");
+    }
 
+    // Ativa trava visual e técnica
     btn.disabled = true;
+    const originalText = btn.innerHTML;
     btn.innerHTML = '<div class="spinner"></div> Verificando...';
 
+    // URL preparada para a action de recuperação no Backend
     const url = `${urlSheets}?action=recuperarSenha&email=${encodeURIComponent(email)}`;
 
     try {
-        // Para recuperação, como é apenas um aviso, usamos no-cors para evitar erros
-        await fetch(url, { method: 'GET', mode: 'no-cors' });
-        
-        alert("✅ Se o e-mail existir no sistema, você receberá as instruções em instantes.");
-        showScreen('screen-login');
+        // Removido 'no-cors' para podermos validar o JSON de resposta
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.success) {
+            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
+            alert("✅ Sucesso! Se o e-mail estiver correto, você receberá sua senha em instantes.\n\nVerifique também sua caixa de SPAM.");
+            showScreen('screen-login');
+        } else {
+            if(typeof tocarBeep === 'function') tocarBeep('erro');
+            alert("❌ Erro: " + (data.error || "E-mail não localizado em nossa base."));
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     } catch (e) {
-        alert("Erro ao processar solicitação.");
-    } finally {
+        console.error("Erro na recuperação:", e);
+        alert("🌐 Erro na comunicação com o servidor. Tente novamente.");
         btn.disabled = false;
-        btn.innerHTML = "Recuperar Senha";
+        btn.innerHTML = originalText;
     }
 }
-
+    
 // --- FUNÇÃO DE CADASTRO COM SPINNER E TRAVA ---
 async function cadastrar() {
     if (processandoCadastro) return; 
