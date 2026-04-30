@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v18</h3>
+    <h3>Acesso v19</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -585,85 +585,87 @@ function resetBotaoCadastro(btn, textoOriginal) {
 
 
 
-// --- 5. LOGICA DE CONFERÊNCIA (DADOS EXTRAS, PLACA E SINCRONISMO) ---
+// --- 5. LOGICA DE CONFERÊNCIA (SINCRO AUTOMÁTICA SEM VALIDAÇÃO DE PLACA) ---
 async function atualizarDadosExtras() {
     const selectedId = document.getElementById("romaneio").value;
     const btnIniciar = document.getElementById("btnIniciar");
     const statusInfo = document.getElementById("status-info");
+    
+    // Busca os dados do romaneio no array global
     const info = dadosCompletos.find(r => r.Romaneio === selectedId);
 
     if (info) {
+        // Preenche os campos informativos automaticamente
         document.getElementById("campo_operador").value = info.Operador || "";
         document.getElementById("transp").value = info.Transp || "";
         document.getElementById("total_pedidos").value = info.TTPedidos || 0;
         document.getElementById("total_volumes").value = info.TTvols || 0;
 
-        const placaCorreta = info.Placa ? info.Placa.toString().toUpperCase().replace(/[^A-Z0-9]/g, '') : "";
-        const promptResposta = prompt("🔐 VALIDAÇÃO\nInforme a PLACA do veículo:");
-        const placaDigitada = promptResposta ? promptResposta.toUpperCase().replace(/[^A-Z0-9]/g, '') : "";
-
-        if (placaDigitada === placaCorreta && placaDigitada !== "") {
-            
-            // Início do feedback de carregamento
-            if (statusInfo) {
-                statusInfo.innerText = "⏳ Sincronizando dados...";
-                statusInfo.style.background = "#fff3cd";
-                statusInfo.style.display = "block";
-            }
-            btnIniciar.disabled = true;
-            btnIniciar.innerText = "Sincronizando...";
-
-            try {
-                const response = await fetch(`${urlSheets}?action=verificarPendencias&romaneio=${encodeURIComponent(selectedId)}`);
-                const result = await response.json();
-
-                if (result.faltantes) {
-                    const totalPedidos = parseInt(info.TTPedidos) || 0;
-                    const qtdFaltantes = result.faltantes.length;
-                    const jaLidosNoSheets = totalPedidos - qtdFaltantes;
-
-                    // Atualiza o progresso visual
-                    codigosLidos = []; 
-                    document.getElementById("contador").innerText = jaLidosNoSheets;
-                    if (typeof atualizarBarraProgresso === "function") {
-                        atualizarBarraProgresso(jaLidosNoSheets); 
-                    }
-
-                    // --- NOVA TRAVA: BLOQUEIO SE PENDÊNCIAS = 0 ---
-                    if (qtdFaltantes === 0) {
-                        alert("✅ Este romaneio já está 100% CONCLUÍDO!\nO acesso à câmera foi bloqueado.");
-                        if (statusInfo) {
-                            statusInfo.innerText = "✅ ROMANEIO CONCLUÍDO";
-                            statusInfo.style.background = "#d4edda";
-                        }
-                        btnIniciar.innerText = "CONCLUÍDO";
-                        btnIniciar.disabled = true;
-                        btnIniciar.style.opacity = "0.5";
-                        btnIniciar.style.backgroundColor = "#2b9348"; // Fica verde indicando conclusão
-                        return; // Sai da função aqui, impedindo a liberação do botão
-                    }
-                }
-                
-                // Se chegou aqui, ainda há pendências. Libera o botão.
-                if (statusInfo) {
-                    statusInfo.innerText = "✅ Sincronização concluída!";
-                    statusInfo.style.background = "#d4edda";
-                }
-                btnIniciar.disabled = false; 
-                btnIniciar.style.opacity = "1";
-                btnIniciar.innerText = "Iniciar Conferência";
-
-            } catch (e) {
-                console.error("Erro ao sincronizar:", e);
-                btnIniciar.disabled = false;
-                btnIniciar.innerText = "Iniciar Conferência";
-            }
-            
-        } else {
-            alert("❌ Placa incorreta!");
-            document.getElementById("romaneio").value = "";
-            limparCamposExtras();
+        // Feedback visual de que a sincronização começou
+        if (statusInfo) {
+            statusInfo.innerText = "⏳ Sincronizando dados com o servidor...";
+            statusInfo.style.background = "#fff3cd"; // Amarelo (Atenção)
+            statusInfo.style.display = "block";
         }
+        
+        btnIniciar.disabled = true;
+        btnIniciar.innerText = "Sincronizando...";
+
+        try {
+            // Busca as pendências reais no Backend (Apps Script)
+            const response = await fetch(`${urlSheets}?action=verificarPendencias&romaneio=${encodeURIComponent(selectedId)}`);
+            const result = await response.json();
+
+            if (result.faltantes) {
+                const totalPedidos = parseInt(info.TTPedidos) || 0;
+                const qtdFaltantes = result.faltantes.length;
+                const jaLidosNoSheets = totalPedidos - qtdFaltantes;
+
+                // Atualiza o progresso visual na tela
+                codigosLidos = []; 
+                document.getElementById("contador").innerText = jaLidosNoSheets;
+                
+                if (typeof atualizarBarraProgresso === "function") {
+                    atualizarBarraProgresso(jaLidosNoSheets); 
+                }
+
+                // --- TRAVA: SE NÃO HOUVER NADA PARA LER ---
+                if (qtdFaltantes === 0) {
+                    alert("✅ Este romaneio já está 100% CONCLUÍDO!");
+                    if (statusInfo) {
+                        statusInfo.innerText = "✅ ROMANEIO CONCLUÍDO";
+                        statusInfo.style.background = "#d4edda"; // Verde
+                    }
+                    btnIniciar.innerText = "CONCLUÍDO";
+                    btnIniciar.disabled = true;
+                    btnIniciar.style.opacity = "0.5";
+                    btnIniciar.style.backgroundColor = "#2b9348"; 
+                    return;
+                }
+            }
+            
+            // Sucesso: Existem pendências, libera o botão para iniciar o trabalho
+            if (statusInfo) {
+                statusInfo.innerText = "✅ Sincronização concluída!";
+                statusInfo.style.background = "#d4edda";
+            }
+            
+            btnIniciar.disabled = false; 
+            btnIniciar.style.opacity = "1";
+            btnIniciar.innerText = "Iniciar Conferência";
+
+        } catch (e) {
+            console.error("Erro ao sincronizar:", e);
+            alert("⚠️ Erro ao sincronizar dados. Tente selecionar o romaneio novamente.");
+            btnIniciar.disabled = false;
+            btnIniciar.innerText = "Tentar Sincronizar";
+            if (statusInfo) statusInfo.style.display = "none";
+        }
+        
+    } else {
+        // Se desmarcar o romaneio, limpa a tela
+        if(typeof limparCamposExtras === 'function') limparCamposExtras();
+        if (statusInfo) statusInfo.style.display = "none";
     }
 }
 
