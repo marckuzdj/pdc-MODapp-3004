@@ -494,25 +494,26 @@ async function solicitarRecuperacao() {
 
         if (resJson.success) {
             if(typeof tocarBeep === 'function') tocarBeep('sucesso');
-            alert("✅ Sucesso! Se o e-mail estiver correto, você receberá sua senha em instantes.\n\nVerifique sua caixa de entrada e SPAM.");
-            showScreen('screen-login');
+            alert("✅ Sucesso! Sua senha foi enviada para o e-mail: " + email + ".\n\nVerifique sua caixa de entrada e SPAM.");
+            
+            // --- RESET E RETORNO ---
+            emailField.value = ""; // Limpa o campo de e-mail
+            showScreen('screen-login'); // Volta para a tela de login
+            
         } else {
             // Se o e-mail não existir na planilha, ele cai aqui
             if(typeof tocarBeep === 'function') tocarBeep('erro');
             alert("❌ Erro: " + (resJson.error || "E-mail não localizado em nossa base."));
-            btn.disabled = false;
-            btn.innerHTML = originalText;
         }
     } catch (e) {
         console.error("Erro na recuperação:", e);
         alert("🌐 Erro na comunicação com o servidor. Tente novamente.");
+    } finally {
+        // Garante que o botão volte ao normal independentemente do resultado
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
 }
-
-
-
 
 
 async function cadastrar() {
