@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v2</h3>
+    <h3>Acesso v3</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -411,44 +411,36 @@ function fetchJSONP(url) {
     });
 }
 
-// --- LOGIN ADAPTADO (CASE-INSENSITIVE + BYPASS CORS) ---
 async function realizarLogin() {
     const btn = document.querySelector("#screen-login .btn-primary");
     const email = document.getElementById('login-user').value.trim().toLowerCase();
     const senha = document.getElementById('login-pass').value.trim();
     const transp = document.getElementById('login-transp').value;
 
-    if (!email || !senha || !transp) {
-        if(typeof tocarBeep === 'function') tocarBeep('erro');
-        return alert("Por favor, preencha todos os campos.");
-    }
+    if (!email || !senha || !transp) return alert("Preencha todos os campos.");
 
     btn.disabled = true;
     const originalText = btn.innerHTML;
     btn.innerHTML = '<div class="spinner"></div> Autenticando...';
 
-    // URL com parâmetros para o Backend buscar na Coluna E
     const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}&transp=${encodeURIComponent(transp)}`;
 
     try {
-        // Chamada via JSONP para ignorar erro de CORS do GitHub
+        // USANDO JSONP PARA BYPASS TOTAL DE CORS
         const data = await fetchJSONP(url);
 
         if (data.authorized) {
-            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
             alert("✅ Bem-vindo(a), " + data.nome);
             document.getElementById('usuario').value = data.nome;
-            if(document.getElementById('transp')) document.getElementById('transp').value = transp;
             showScreen('screen-main');
         } else {
-            if(typeof tocarBeep === 'function') tocarBeep('erro');
-            alert(data.error || "❌ Dados incorretos.");
+            alert("❌ " + (data.error || "Usuário ou senha incorretos."));
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
     } catch (err) {
-        console.error("Erro técnico:", err);
-        alert("🌐 Erro na comunicação com o servidor. Verifique sua internet.");
+        console.error(err);
+        alert("🌐 Erro de conexão. Verifique o console (F12).");
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
