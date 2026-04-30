@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>APP VIVO: Logística</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root {
+            --nu-purple: #820ad1;
+            --nu-purple-dark: #6d09b1;
+            --nu-gray: #f5f5f5;
+            --nu-text: #111111;
+            --nu-text-light: #666666;
+            --error: #e63946;
+            --success: #2b9348;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 92%;           /* Ajuste para celulares */
+            max-width: 450px;     /* Largura fixa padrão */
+            margin: 20px auto;    /* Centraliza e dá espaço no topo */
+            box-sizing: border-box; 
+        }
+        
+        /* Garante que inputs e a barra de progresso não "vazem" para fora */
+        input, select, .btn, #containerProgresso {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Efeito de Giro (Spinner) */
+        /* Efeito de Giro (Spinner) */
+        /* Mantenha apenas este bloco */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Centralização do conteúdo do botão durante o envio */
+        .btn:disabled, button:disabled {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+    
+    h3 {
+        text-align: center;
+        color: var(--nu-purple);
+        margin-top: 0;
+    }
+        
+        /* Garante que os inputs não "vazem" para fora do card */
+        input, select {
+            width: 100%;
+            box-sizing: border-box; 
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Inter', -apple-system, sans-serif; }
+        body { margin: 0; padding: 12px; background: var(--nu-gray); color: var(--nu-text); line-height: 1.4; }
+        
+        . { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 500px; margin: auto; }
+        .hidden { display: none !important; }
+        
+        h3 { color: var(--nu-purple); font-weight: 700; text-align: center; margin-top: 0; }
+        label { font-size: 11px; color: var(--nu-purple); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        
+        input, select { width: 100%; height: 50px; padding: 0 16px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; background: #fff; }
+        input:focus { outline: none; border-color: var(--nu-purple); }
+
+        .btn { width: 100%; height: 56px; border: none; border-radius: 28px; font-weight: 700; cursor: pointer; font-size: 16px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-primary { background: var(--nu-purple); color: white; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .link-sec { display: block; text-align: center; color: var(--nu-purple); text-decoration: none; font-size: 13px; margin-top: 15px; font-weight: 600; }
+        
+        /* Estilos do App de Conferência (originais do PDF) */
+        #reader {
+                width: 100%;
+                min-height: 250px;
+                background-color: #1a1a1a;
+                border-radius: 12px;
+                overflow: hidden;
+            }
+
+        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .lidos-container { border: 1px solid #eee; border-radius: 12px; padding: 12px; background: #fafafa; margin-top: 15px; }
+        #status-info { padding: 10px; border-radius: 8px; font-size: 14px; text-align: center; margin-bottom: 10px; background: #eee; }
+    </style>
+</head>
+<body>
+
+<!-- 1. TELA DE LOGIN -->
+<div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
+    <h3>Acesso v28</h3>
+    <label>E-mail</label>
+    <input type="email" id="login-user" placeholder="seu@email.com">
+    
+    <label>Senha</label>
+    <input type="password" id="login-pass" placeholder="••••••••">
+    
+    <label>Transportadora</label>
+    <select id="login-transp">
+        <option value="">Carregando...</option>
+    </select>
+    
+    <button class="btn btn-primary" onclick="realizarLogin()">Entrar</button>
+    
+    <!-- Links centralizados -->
+    <div style="text-align: center; display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <a href="#" class="link-sec" onclick="showScreen('screen-esqueci')">Esqueci minha senha</a>
+        <a href="#" class="link-sec" onclick="showScreen('screen-cadastro')">Não tem senha? Cadastre-se...</a>
+    </div>
+</div>
+
+
+    <!-- 2. TELA ESQUECI SENHA -->
+    <div id="screen-esqueci" class="card hidden">
+        <h3>Recuperar Senha</h3>
+        <label>E-mail de Cadastro</label>
+        <input type="email" id="recup-email" placeholder="seu@email.com">
+        <button id="btn-recuperar" class="btn btn-primary" onclick="solicitarRecuperacao()">Recuperar Senha</button>
+        <a href="#" class="link-sec" onclick="showScreen('screen-login')">Voltar</a>
+    </div>
+
+
+<!-- 3. TELA DE CADASTRO -->
+<div id="screen-cadastro" class="card hidden"> <!-- Adicionada a classe 'card' para fixar a largura -->
+    <h3 style="text-align: center; color: var(--nu-purple);">Cadastro</h3>
+    
+    <label>Nome Completo</label>
+    <input type="text" id="reg-nome" placeholder="Digite seu nome completo">
+    
+    <label>Docto</label>
+    <input type="text" id="reg-doc" placeholder="CPF ou CNPJ">
+    
+    <label>E-mail</label>
+    <input type="email" id="reg-email" placeholder="seu@email.com">
+    
+    <label>Transportadora</label>
+    <select id="reg-transp-list">
+        <option value="">Selecione...</option>
+        <!-- Populado dinamicamente via JS -->
+    </select>
+    
+    <label>Senha</label>
+    <input type="password" id="reg-pass" placeholder="••••••••">
+    
+    <label>Repita a Senha</label>
+    <input type="password" id="reg-pass2" placeholder="••••••••">
+    
+    <!-- Botão com ID e Spinner integrado via JS -->
+    <button class="btn btn-primary" id="btn-cadastrar" onclick="cadastrar()">Cadastrar</button>
+    
+    <!-- Link centralizado para voltar -->
+    <div style="text-align: center; margin-top: 15px;">
+        <a href="#" class="link-sec" onclick="showScreen('screen-login')">Já tenho conta</a>
+    </div>
+</div>
+
+
+    <!-- 4. TELA PRINCIPAL (CONFERÊNCIA - ORIGINAL) -->
+    <div id="screen-main" class="card hidden"> <!-- Adicionada a classe 'card' aqui -->
+        <h3 style="display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--nu-purple);">
+            <img src="https://icons8.com" style="height: 1.2em;">
+            Conferência de Carga
+        </h3>
+
+        
+        <label>Conferente</label>
+        <input type="text" id="usuario" readonly style="background: #f0f2f5;"> 
+
+        <label>Romaneio</label>
+        <select id="romaneio" onchange="atualizarDadosExtras()">
+            <option value="">Carregando Romaneios...</option>
+        </select>
+
+        <!-- Linha 1: Transportadora e Operador -->
+        <div class="grid-info" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+            <div><label>Transportadora</label><input type="text" id="transp" readonly style="background: #f0f2f5;"></div>
+            <div><label>Operador</label><input type="text" id="campo_operador" readonly style="background: #f0f2f5;"></div>
+        </div>
+
+        <!-- NOVO: Linha 2: Totais (Pedidos e Volumes) -->
+        <div class="grid-info" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+            <div><label>Total Pedidos</label><input type="text" id="total_pedidos" readonly style="background: #f0f2f5;"></div>
+            <div><label>Total Volumes</label><input type="text" id="total_volumes" readonly style="background: #f0f2f5;"></div>
+        </div>
+
+        <div id="reader" style="display: none;"></div>
+        <div id="status-info" style="background: #eee; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 10px;">Aguardando câmera...</div>
+
+        <button id="btnIniciar" class="btn btn-primary" onclick="iniciarConferencia()" style="margin-bottom: 15px;">
+            Iniciar Conferência
+        </button>
+
+        <!-- Barra de Progresso baseada em Pedidos -->
+        <!-- Container da Barra de Progresso -->
+        <div id="containerProgresso" style="margin: 20px 0 10px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                <label style="margin-bottom: 0; color: var(--nu-purple);">Progresso da Carga</label>
+                <span id="txt-progresso" style="font-size: 12px; font-weight: bold; color: var(--nu-text-light);">0 / 0 Pedidos (0%)</span>
+            </div>
+            <div style="width: 100%; background-color: #eee; border-radius: 10px; height: 14px; overflow: hidden; border: 1px solid #ddd;">
+                <div id="barraProgresso" style="width: 0%; height: 100%; background-color: var(--nu-purple); transition: width 0.5s ease-in-out, background-color 0.3s;"></div>
+            </div>
+        </div>
+    
+        
+        <!-- NOVO: Botão Lista de Pendências -->
+        <button class="btn btn-primary" onclick="verificarPendencias()" style="margin-bottom: 20px; background-color: var(--nu-purple);">
+            📋 Lista de Pendências
+        </button>
+
+        <div class="lidos-container" style="border: 1px solid #eee; border-radius: 12px; padding: 12px; background: #fafafa;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong>Lidos: <span id="contador" style="color: var(--nu-purple); font-size: 1.2em;">0</span></strong>
+                <button onclick="removerUltimo()" style="background:none; border: 1.5px solid var(--error); color: var(--error); border-radius: 15px; padding: 4px 10px; cursor: pointer; font-size: 11px; font-weight: bold;">✕ REMOVER</button>
+            </div>
+            <div id="itens-lidos" style="max-height: 150px; overflow-y: auto; margin-top: 10px;"></div>
+        </div>
+
+        <button class="btn btn-primary" style="margin-top: 15px;" onclick="finalizarLote()">Finalizar Lote</button>
+        
+        <!-- Área de Assinatura (oculta) -->
+        <div id="areaAssinatura" class="hidden" style="text-align:center; margin-top: 15px;">
+            <label><b>Assine aqui:</b></label>
+            <canvas id="canvasAssinatura" width="300" height="150" style="border: 2px solid #000; background: #fff; border-radius: 8px; touch-action: none;"></canvas>
+            <button class="link-sec" style="border:none; background:none; width:100%" onclick="limparAssinatura()">Limpar Assinatura</button>
+        </div>
+    </div>
+
+    <!-- TELA DE INTERCORRÊNCIA (STAND BY) -->
+    <div id="screen-intercorrencia" class="card hidden">
+        <h3 style="color: var(--nu-purple); text-align: center;">⏸️ Registro de Intercorrência</h3>
+        <p style="font-size: 14px; color: var(--nu-text-light); text-align: center;">
+            O romaneio possui pendências. Selecione o motivo colocar em espera.
+        </p>
+        
+        <label>Motivo da Retenção</label>
+        <select id="select-motivo">
+            <option value="">Selecione o motivo...</option>
+            <optgroup label="📦 Carga e Pedidos">
+                <option value="Divergência de Quantidade">Divergência de Quantidade (Faltando/Sobrando)</option>
+                <option value="Mercadoria Avariada">Mercadoria Avariada/Danificada</option>
+                <option value="Item Trocado">Item Trocado (SKU Incorreto)</option>
+                <option value="Pedido não Localizado">Pedido não Localizado no Picking</option>
+            </optgroup>
+            <optgroup label="📄 Documentação e Fiscal">
+                <option value="NF não Emitida">NF não Emitida / Erro no Faturamento</option>
+                <option value="Divergência de Valores">Divergência de Valores/Impostos</option>
+                <option value="Falta de CTE/Manifesto">Falta de CTE ou Manifesto (MDFe)</option>
+                <option value="Problemas Fiscais (Sefaz)">Problemas Fiscais (Sefaz/Bloqueio)</option>
+            </optgroup>
+            <optgroup label="🚛 Veículo e Transporte">
+                <option value="Veículo Inadequado">Veículo Inadequado</option>
+                <option value="Motorista Ausente">Motorista Ausente / Atraso</option>
+                <option value="Documento do Veículo Irregular">Documento do Veículo Irregular</option>
+            </optgroup>
+            <optgroup label="⚠️ Outros">
+                <option value="Erro de Sistema (WMS/ERP)">Erro de Sistema (WMS/ERP)</option>
+                <option value="Aguardando Autorização">Aguardando Autorização Superior</option>
+                <option value="Outros">Outros (Descrever abaixo)</option>
+            </optgroup>
+        </select>
+    
+        <label>Observação Detalhada</label>
+        <input type="text" id="obs-intercorrencia" placeholder="Explique os detalhes aqui...">
+    
+        <button class="btn btn-success" onclick="registrarIntercorrencia()">Registrar e Prosseguir</button>
+        <button class="link-sec" onclick="showScreen('screen-main')" style="border:none; background:none; width:100%; cursor:pointer;">Cancelar</button>
+    </div>
+
+<script>
+      // --- LÓGICA DE NAVEGAÇÃO E CADASTRO ---
+
+// --- 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS ---
+const urlSheets = "https://script.google.com/macros/s/AKfycbyOkNObww3Q-pnQOWUZM9nJIsXJjwqZRpfbDD8ak3LJ9ORoEia_P5wjjq6dc3ufnVbx/exec"; // Substituir pela sua URL real
+let codigosLidos = [];
+let dadosCompletos = [];
+let enviandoDados = false;
+let processandoCadastro = false;
+let validandoAgora = false;
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// --- 2. NAVEGAÇÃO E INTERFACE ---
+function showScreen(id) {
+    document.querySelectorAll('.card').forEach(s => s.classList.add('hidden'));
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('hidden');
+}
+
+
+let html5QrCode; // Variável global mantida
+
+// --- FUNÇÃO INICIAR (15 FPS + Reset da Barra) ---
+async function iniciarConferencia() {
+    const btnIniciar = document.getElementById("btnIniciar");
+    const readerDiv = document.getElementById("reader");
+    const statusInfo = document.getElementById("status-info");
+
+    if (!document.getElementById("romaneio").value) {
+        alert("⚠️ Selecione um Romaneio primeiro.");
+        return;
+    }
+
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    btnIniciar.style.display = "none"; 
+    readerDiv.style.display = "block";
+    
+    // Mostra a barra zerada assim que inicia
+    atualizarBarraProgresso();
+
+    if (html5QrCode) {
+        try { await html5QrCode.stop(); } catch (e) {}
+    }
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    // Configuração de alta velocidade (15fps)
+    const config = { 
+        fps: 15, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0 
+    };
+
+    try {
+        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+        statusInfo.innerText = "Aguardando leitura...";
+    } catch (err) {
+        btnIniciar.style.display = "block";
+        alert("Erro na câmera. Verifique as permissões.");
+    }
+}
+
+// --- 3. CARREGAMENTO INICIAL (WINDOW.ONLOAD) ---
+window.onload = function() {
+    // Carregar Romaneios
+    fetch(urlSheets + "?action=getRomaneios")
+        .then(res => res.json())
+        .then(data => {
+            dadosCompletos = data;
+            const select = document.getElementById("romaneio");
+            if (select) {
+                select.innerHTML = '<option value="">Selecione o Romaneio</option>';
+                data.forEach(item => {
+                    if (!item.Conferencia || item.Conferencia.toString().trim() === "") {
+                        let opt = document.createElement("option");
+                        opt.value = item.Romaneio;
+                        opt.innerHTML = item.Romaneio;
+                        select.appendChild(opt);
+                    }
+                });
+            }
+        });
+
+    // Carregar Transportadoras
+    fetch(urlSheets + "?action=getTransportadoras")
+        .then(res => res.json())
+        .then(lista => {
+            const ids = ['login-transp', 'reg-transp-list'];
+            const optionsHtml = '<option value="">Selecione a Transportadora</option>' + 
+                               lista.map(t => `<option value="${t}">${t}</option>`).join('');
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = optionsHtml;
+            });
+        });
+};
+
+// --- 4. ROTINA DE LOGIN E CADASTRO ---
+// --- FUNÇÃO DE LOGIN COM SPINNER, VALIDAÇÃO DE TRANSPORTADORA E CASE-INSENSITIVE ---
+// --- LOGIN ADAPTADO PARA AMBIENTE EXTERNO (GITHUB) ---
+async function realizarLogin() {
+    const btn = document.querySelector("#screen-login .btn-primary");
+    const email = document.getElementById('login-user').value.trim().toLowerCase();
+    const senha = document.getElementById('login-pass').value.trim();
+    const transp = document.getElementById('login-transp').value;
+
+    if (!email || !senha || !transp) {
+        if(typeof tocarBeep === 'function') tocarBeep('erro');
+        return alert("Por favor, preencha todos os campos.");
+    }
+
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner"></div> Autenticando...';
+
+    // Usamos a URL com todos os parâmetros
+    const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}&transp=${encodeURIComponent(transp)}`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json(); // Se o backend usar responderJSON, isso funcionará!
+
+        if (data.authorized) {
+            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
+            alert("Bem-vindo(a), " + data.nome);
+            document.getElementById('usuario').value = data.nome;
+            if(document.getElementById('transp')) document.getElementById('transp').value = transp;
+            showScreen('screen-main');
+        } else {
+            if(typeof tocarBeep === 'function') tocarBeep('erro');
+            alert(data.error || "Dados incorretos.");
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    } catch (err) {
+        // Se o fetch falhar por CORS mesmo com os dados certos, o alerta avisará:
+        console.error("Erro técnico:", err);
+        alert("🌐 Erro na comunicação. Verifique se o Script do Google está como 'Qualquer pessoa'.");
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// --- NOVA FUNÇÃO: SOLICITAR RECUPERAÇÃO ---
+async function solicitarRecuperacao() {
+    const email = document.getElementById('recup-email').value.trim().toLowerCase();
+    const btn = document.getElementById('btn-recuperar');
+
+    if (!email) return alert("Informe seu e-mail de cadastro!");
+
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Verificando...';
+
+    const url = `${urlSheets}?action=recuperarSenha&email=${encodeURIComponent(email)}`;
+
+    try {
+        // Para recuperação, como é apenas um aviso, usamos no-cors para evitar erros
+        await fetch(url, { method: 'GET', mode: 'no-cors' });
+        
+        alert("✅ Se o e-mail existir no sistema, você receberá as instruções em instantes.");
+        showScreen('screen-login');
+    } catch (e) {
+        alert("Erro ao processar solicitação.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = "Recuperar Senha";
+    }
+}
+
+// --- FUNÇÃO DE CADASTRO COM SPINNER E TRAVA ---
+async function cadastrar() {
+    if (processandoCadastro) return; 
+
+    const btn = document.getElementById('btn-cadastrar');
+    const nome = document.getElementById('reg-nome').value.trim();
+    const doc = document.getElementById('reg-doc').value.trim();
+    const email = document.getElementById('reg-email').value.trim().toLowerCase();
+    const transp = document.getElementById('reg-transp-list').value;
+    const senha = document.getElementById('reg-pass').value.trim();
+    const senha2 = document.getElementById('reg-pass2').value.trim();
+
+    if (!nome || !doc || !email || !transp || !senha) {
+        if(typeof tocarBeep === 'function') tocarBeep('erro');
+        return alert("⚠️ Por favor, preencha todos os campos.");
+    }
+
+    if (senha !== senha2) {
+        if(typeof tocarBeep === 'function') tocarBeep('erro');
+        return alert("❌ As senhas não conferem!");
+    }
+
+    processandoCadastro = true;
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner"></div> Gravando Registro...';
+
+    const url = `${urlSheets}?action=salvarNovoUsuario&nome=${encodeURIComponent(nome)}&documento=${encodeURIComponent(doc)}&email=${encodeURIComponent(email)}&transp=${encodeURIComponent(transp)}&senha=${encodeURIComponent(senha)}`;
+    
+    try {
+        // Usamos 'no-cors' para evitar o erro de redirecionamento do Google no GitHub Pages
+        await fetch(url, { 
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-cache'
+        });
+
+        // Como o modo 'no-cors' não permite ler o JSON de resposta, 
+        // aguardamos 1.5 segundos para garantir que o Google processou a gravação
+        setTimeout(() => {
+            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
+            alert("✅ Solicitação enviada!\nSe os dados estiverem corretos, seu acesso será liberado.");
+            location.reload(); 
+        }, 1500);
+
+    } catch (err) {
+        console.error("Erro na comunicação:", err);
+        alert("🌐 Erro ao conectar com o servidor. Verifique sua internet.");
+        resetBotaoCadastro(btn, originalText);
+    }
+}
+
+
+// Função auxiliar para resetar o botão em caso de falha
+function resetBotaoCadastro(btn, textoOriginal) {
+    processandoCadastro = false;
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+    if(typeof tocarBeep === 'function') tocarBeep('erro');
+}
+
+
+
+// --- 5. LOGICA DE CONFERÊNCIA (DADOS EXTRAS, PLACA E SINCRONISMO) ---
+async function atualizarDadosExtras() {
+    const selectedId = document.getElementById("romaneio").value;
+    const btnIniciar = document.getElementById("btnIniciar");
+    const statusInfo = document.getElementById("status-info");
+    const info = dadosCompletos.find(r => r.Romaneio === selectedId);
+
+    if (info) {
+        document.getElementById("campo_operador").value = info.Operador || "";
+        document.getElementById("transp").value = info.Transp || "";
+        document.getElementById("total_pedidos").value = info.TTPedidos || 0;
+        document.getElementById("total_volumes").value = info.TTvols || 0;
+
+        const placaCorreta = info.Placa ? info.Placa.toString().toUpperCase().replace(/[^A-Z0-9]/g, '') : "";
+        const promptResposta = prompt("🔐 VALIDAÇÃO\nInforme a PLACA do veículo:");
+        const placaDigitada = promptResposta ? promptResposta.toUpperCase().replace(/[^A-Z0-9]/g, '') : "";
+
+        if (placaDigitada === placaCorreta && placaDigitada !== "") {
+            
+            // Início do feedback de carregamento
+            if (statusInfo) {
+                statusInfo.innerText = "⏳ Sincronizando dados...";
+                statusInfo.style.background = "#fff3cd";
+                statusInfo.style.display = "block";
+            }
+            btnIniciar.disabled = true;
+            btnIniciar.innerText = "Sincronizando...";
+
+            try {
+                const response = await fetch(`${urlSheets}?action=verificarPendencias&romaneio=${encodeURIComponent(selectedId)}`);
+                const result = await response.json();
+
+                if (result.faltantes) {
+                    const totalPedidos = parseInt(info.TTPedidos) || 0;
+                    const qtdFaltantes = result.faltantes.length;
+                    const jaLidosNoSheets = totalPedidos - qtdFaltantes;
+
+                    // Atualiza o progresso visual
+                    codigosLidos = []; 
+                    document.getElementById("contador").innerText = jaLidosNoSheets;
+                    if (typeof atualizarBarraProgresso === "function") {
+                        atualizarBarraProgresso(jaLidosNoSheets); 
+                    }
+
+                    // --- NOVA TRAVA: BLOQUEIO SE PENDÊNCIAS = 0 ---
+                    if (qtdFaltantes === 0) {
+                        alert("✅ Este romaneio já está 100% CONCLUÍDO!\nO acesso à câmera foi bloqueado.");
+                        if (statusInfo) {
+                            statusInfo.innerText = "✅ ROMANEIO CONCLUÍDO";
+                            statusInfo.style.background = "#d4edda";
+                        }
+                        btnIniciar.innerText = "CONCLUÍDO";
+                        btnIniciar.disabled = true;
+                        btnIniciar.style.opacity = "0.5";
+                        btnIniciar.style.backgroundColor = "#2b9348"; // Fica verde indicando conclusão
+                        return; // Sai da função aqui, impedindo a liberação do botão
+                    }
+                }
+                
+                // Se chegou aqui, ainda há pendências. Libera o botão.
+                if (statusInfo) {
+                    statusInfo.innerText = "✅ Sincronização concluída!";
+                    statusInfo.style.background = "#d4edda";
+                }
+                btnIniciar.disabled = false; 
+                btnIniciar.style.opacity = "1";
+                btnIniciar.innerText = "Iniciar Conferência";
+
+            } catch (e) {
+                console.error("Erro ao sincronizar:", e);
+                btnIniciar.disabled = false;
+                btnIniciar.innerText = "Iniciar Conferência";
+            }
+            
+        } else {
+            alert("❌ Placa incorreta!");
+            document.getElementById("romaneio").value = "";
+            limparCamposExtras();
+        }
+    }
+}
+
+
+
+
+function limparCamposExtras() {
+    ["campo_operador", "transp", "total_pedidos", "total_volumes"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = (id === "total_pedidos" || id === "total_volumes") ? 0 : "";
+    });
+}
+
+// --- 6. ESCANEAMENTO, BEEP E PROGRESSO ---
+function tocarBeep(tipo) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(tipo === 'sucesso' ? 880 : 220, audioCtx.currentTime);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+    osc.stop(audioCtx.currentTime + 0.5);
+}
+
+// --- FUNÇÃO DE SCAN (Alta Performance + Sheets Realtime + Beep + Barra) ---
+async function onScanSuccess(decodedText) {
+    if (validandoAgora) return;
+
+    const barcodeLimpo = decodedText.trim();
+    const romaneioVal = document.getElementById("romaneio").value;
+    const usuario = document.getElementById("usuario").value;
+    const status = document.getElementById("status-info");
+
+    // Validações locais rápidas
+    if (codigosLidos.includes(barcodeLimpo)) {
+        tocarBeep('erro');
+        status.innerText = "⚠️ JÁ LIDO: " + barcodeLimpo;
+        status.style.background = "#fff3cd";
+        return;
+    }
+
+    validandoAgora = true;
+    status.innerText = "🔍 Validando: " + barcodeLimpo + "...";
+
+    try {
+    // Dentro da função onScanSuccess, onde você define os params:
+    const params = new URLSearchParams({
+        action: "validarBarcode",
+        barcode: barcodeLimpo,
+        romaneio: romaneioVal,
+        conferente: usuario,
+        confirmado: "OK",
+        // Adicionamos o campo exato que o Backend precisa processar
+        data_conferencia: new Date().toLocaleString("pt-BR") 
+    });
+
+        // Chamada em tempo real para o Sheets
+        const response = await fetch(`${urlSheets}?${params.toString()}`);
+        const result = await response.json();
+
+        if (result.valid) {
+            tocarBeep('sucesso'); // Seu beep sintético
+            codigosLidos.push(barcodeLimpo);
+
+            // Atualiza Contador e Barra de Progresso
+            document.getElementById("contador").innerText = codigosLidos.length;
+            atualizarBarraProgresso(); 
+
+            // Adiciona na lista visual
+            const lista = document.getElementById("itens-lidos");
+            lista.innerHTML = `<div class="item-codigo"><span>${barcodeLimpo}</span> <span style="color:var(--success)">✓</span></div>` + lista.innerHTML;
+
+            status.innerText = "✅ VALIDADO E ATUALIZADO";
+            status.style.background = "#d4edda";
+        } else {
+            tocarBeep('erro');
+            status.innerText = "❌ " + (result.error || "INVÁLIDO");
+            status.style.background = "#f8d7da";
+        }
+    } catch (error) {
+        tocarBeep('erro');
+        status.innerText = "🌐 Erro de conexão";
+    } finally {
+        setTimeout(() => { validandoAgora = false; }, 1000); // Delay curto para leitura rápida
+    }
+}
+
+    // --- LÓGICA DA BARRA (Meta: total_pedidos) ---
+    function atualizarBarraProgresso(valorManual = null) {
+        const totalPedidos = parseInt(document.getElementById('total_pedidos').value) || 0;
+        // Se passarmos um valor (do Sheets), usa ele. Se não, usa o tamanho do array local.
+        const lidos = (valorManual !== null) ? valorManual : codigosLidos.length;
+        
+        const barra = document.getElementById('barraProgresso');
+        const texto = document.getElementById('txt-progresso');
+    
+        if (totalPedidos > 0 && barra) {
+            const percentual = Math.min((lidos / totalPedidos) * 100, 100);
+            barra.style.width = percentual + "%";
+            
+            if (texto) {
+                texto.innerText = `${lidos} / ${totalPedidos} Pedidos (${Math.round(percentual)}%)`;
+            }
+    
+            // Feedback de cor
+            barra.style.backgroundColor = (percentual === 100) ? "#2b9348" : "var(--nu-purple)";
+        }
+    }
+
+
+    // --- 7. PENDÊNCIAS, ASSINATURA E ENVIO FINAL ---
+    async function verificarPendencias() {
+        const romaneio = document.getElementById("romaneio").value;
+        if (!romaneio) return alert("⚠️ Selecione um romaneio primeiro!");
+    
+        // Feedback visual no botão
+        const btn = document.querySelector("button[onclick='verificarPendencias()']");
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerText = "⌛ Verificando...";
+    
+        try {
+            const response = await fetch(`${urlSheets}?action=verificarPendencias&romaneio=${encodeURIComponent(romaneio)}`);
+            const result = await response.json();
+    
+            if (result.faltantes && result.faltantes.length > 0) {
+                const total = result.faltantes.length;
+                const lista = result.faltantes.slice(0, 15).join("\n- ");
+                alert(`📦 PEDIDOS FALTANTES (${total}):\n\n- ${lista}${total > 15 ? '\n... e outros.' : ''}`);
+            } else {
+                alert("✅ Tudo Conferido! Não há pendências para este romaneio.");
+            }
+        } catch (e) {
+            console.error("Erro ao buscar pendências:", e);
+            alert("❌ Erro ao conectar com o servidor.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+
+
+// Funções de Assinatura (Canvas)
+// --- Funções de Assinatura (Canvas + Touch Support) ---
+const canvas = document.getElementById('canvasAssinatura');
+const ctx = canvas.getContext('2d');
+let desenhando = false;
+
+// Ajustes de estilo do pincel
+ctx.lineWidth = 2;
+ctx.lineCap = 'round';
+ctx.strokeStyle = '#000';
+
+// Função auxiliar para pegar a posição correta
+function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    // Verifica se é toque ou mouse
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
+}
+
+function iniciarDesenho(e) {
+    desenhando = true;
+    const pos = getMousePos(e);
+    ctx.beginPath(); // Fundamental para não ligar traços antigos
+    ctx.moveTo(pos.x, pos.y);
+    if (e.type === 'touchstart') e.preventDefault(); // Evita rolar a página no celular
+}
+
+function moverDesenho(e) {
+    if (!desenhando) return;
+    const pos = getMousePos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    if (e.type === 'touchmove') e.preventDefault(); // Evita rolar a página no celular
+}
+
+function pararDesenho() {
+    desenhando = false;
+}
+
+// Eventos para Mouse
+canvas.addEventListener('mousedown', iniciarDesenho);
+canvas.addEventListener('mousemove', moverDesenho);
+window.addEventListener('mouseup', pararDesenho);
+
+// Eventos para Touch (Celular) - ESSENCIAL PARA O SEU APP
+canvas.addEventListener('touchstart', iniciarDesenho, { passive: false });
+canvas.addEventListener('touchmove', moverDesenho, { passive: false });
+canvas.addEventListener('touchend', pararDesenho);
+
+
+function limparAssinatura() {
+    // 1. Limpa visualmente o retângulo do canvas (Sua lógica original)
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 2. Reseta o "caminho" de desenho (Crucial para não ligar traços antigos aos novos)
+    ctx.beginPath();
+    
+    // 3. Feedback visual opcional (Console)
+    console.log("Assinatura limpa e resetada.");
+}
+
+
+function assinaturaVazia() {
+    const canvas = document.getElementById('canvasAssinatura');
+    if (!canvas) return true;
+
+    // Cria um canvas temporário do mesmo tamanho para comparação
+    const blank = document.createElement('canvas');
+    blank.width = canvas.width;
+    blank.height = canvas.height;
+
+    // Compara o conteúdo em Base64
+    // Se forem idênticos, o usuário não desenhou nada
+    return canvas.toDataURL() === blank.toDataURL();
+}
+
+
+
+// Variável global para controle de envio (Mantenha no topo do script)
+//let enviandoDados = false;
+
+async function enviarDadosFinais() {
+    // 1. TRAVA DE SEGURANÇA: Impede múltiplos envios
+    if (enviandoDados) {
+        return; // Retorno silencioso para não acumular alertas
+    }
+
+    const btn = document.querySelector(".btn-warning") || document.querySelector(".btn-success") || document.querySelector("button[onclick='finalizarLote()']");
+    const romaneio = document.getElementById("romaneio").value;
+    const usuario = document.getElementById("usuario").value;
+    const areaAssinatura = document.getElementById("areaAssinatura");
+
+    // 2. ATIVA A TRAVA E ATUALIZA INTERFACE COM SPINNER
+    enviandoDados = true; 
+    btn.disabled = true; 
+    // Injeta o Spinner visual e mantém o texto
+    btn.innerHTML = '<div class="spinner"></div> Enviando ao Servidor...';
+    
+    if (areaAssinatura) {
+        areaAssinatura.style.opacity = "0.5"; 
+    }
+
+    try {
+        const canvasParaEnvio = document.getElementById('canvasAssinatura');
+        const assinaturaBase64 = canvasParaEnvio ? canvasParaEnvio.toDataURL("image/png") : "";
+
+        const payload = {
+            action: "finalizarLote",
+            romaneio: romaneio,
+            usuario: usuario,
+            codigos: typeof codigosLidos !== 'undefined' ? codigosLidos : [],
+            geo: window.lastGeo || "0,0",
+            assinatura: assinaturaBase64,
+            conferencia: new Date().toLocaleString("pt-BR"),
+            intercorrencia: typeof intercorrenciaFinal !== 'undefined' ? intercorrenciaFinal : "CONCLUÍDO",
+            obs_final: "Conferência finalizada via APP"
+        };
+
+        const response = await fetch(urlSheets, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert("✅ Lote finalizado! Aba ROMANEIOS atualizada com sucesso.");
+            location.reload(); 
+        } else {
+            throw new Error(result.error || "Erro desconhecido no servidor.");
+        }
+
+    } catch (e) {
+        console.error("Erro Crítico no Envio:", e);
+        alert("❌ Falha ao enviar: " + e.message);
+        
+        // REVERSÃO: Libera a trava e remove o spinner se der erro
+        enviandoDados = false;
+        btn.disabled = false;
+        btn.innerHTML = "✅ Confirmar Assinatura e Enviar";
+        if (areaAssinatura) {
+            areaAssinatura.style.opacity = "1";
+        }
+    }
+}
+
+
+
+
+let intercorrenciaFinal = "CONCLUÍDO"; // Variável global para armazenar o status
+
+async function finalizarLote() {
+    if (enviandoDados) return;
+
+    const romaneioVal = document.getElementById("romaneio").value;
+    const areaAssinatura = document.getElementById("areaAssinatura");
+    const btn = document.querySelector("button[onclick='finalizarLote()']");
+
+    if (!romaneioVal) return alert("⚠️ Selecione um romaneio!");
+
+    // FASE DE ENVIO FINAL (Se a assinatura já estiver visível)
+    if (areaAssinatura && (areaAssinatura.style.display === "block" || !areaAssinatura.classList.contains('hidden'))) {
+        if (assinaturaVazia()) return alert("⚠️ Assine antes de finalizar!");
+        await enviarDadosFinais();
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "🔍 Validando...";
+
+    try {
+        // 1. VALIDAÇÃO DE PENDÊNCIAS
+        const response = await fetch(`${urlSheets}?action=verificarPendencias&romaneio=${encodeURIComponent(romaneioVal)}`);
+        const check = await response.json();
+
+        // BIFURCAÇÃO: Se houver pendências (> 0)
+        if (check.faltantes && check.faltantes.length > 0) {
+            const desejaPausar = confirm(`⚠️ O romaneio tem ${check.faltantes.length} pedidos pendentes de confirmação!\n\nDeseja colocar em espera/stand by?`);
+            
+            if (desejaPausar) {
+                // Abre a nova tela de intercorrência
+                showScreen('screen-intercorrencia'); 
+                btn.disabled = false;
+                btn.innerText = "Finalizar Lote";
+                return; // Para o fluxo aqui
+            } else {
+                alert("Conclusão cancelada. Termine a conferência de todos os itens.");
+                btn.disabled = false;
+                btn.innerText = "Finalizar Lote";
+                return;
+            }
+        }
+
+        // SE NÃO HOUVER PENDÊNCIAS, SEGUE O FLUXO NORMAL
+        intercorrenciaFinal = "CONCLUÍDO";
+        await prepararFaseAssinatura(btn, areaAssinatura);
+
+    } catch (e) {
+        btn.disabled = false;
+        btn.innerText = "Finalizar Lote";
+        alert("❌ Erro na validação. Verifique sua conexão.");
+    }
+}
+
+// Nova função para quando o usuário registra o motivo na tela de Stand By
+async function registrarIntercorrencia() {
+    const motivo = document.getElementById("select-motivo").value;
+    const obs = document.getElementById("obs-intercorrencia").value;
+    const btnMain = document.querySelector("button[onclick='finalizarLote()']");
+    const areaAss = document.getElementById("areaAssinatura");
+
+    if (!motivo) return alert("Por favor, selecione o motivo do Stand By!");
+
+    intercorrenciaFinal = `[STANDBY] ${motivo} | Obs: ${obs}`;
+    
+    // Volta para a tela principal para colher assinatura e GPS
+    showScreen('screen-main'); 
+    await prepararFaseAssinatura(btnMain, areaAss);
+}
+
+// Função auxiliar para evitar repetição de código (GPS + Liberar Assinatura)
+async function prepararFaseAssinatura(btn, areaAssinatura) {
+    btn.innerText = "📍 Localizando...";
+    
+    try {
+        const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                timeout: 5000, 
+                enableHighAccuracy: false,
+                maximumAge: 60000 
+            });
+        });
+        window.lastGeo = `${pos.coords.latitude}, ${pos.coords.longitude}`;
+    } catch (gpsError) {
+        window.lastGeo = "0,0 (Timeout GPS)";
+    }
+
+    // Libera a interface de assinatura
+    btn.disabled = false;
+    btn.innerText = "✅ Confirmar e Enviar";
+    btn.style.backgroundColor = "#ffba08"; 
+
+    if (areaAssinatura) {
+        areaAssinatura.classList.remove('hidden'); 
+        areaAssinatura.style.display = "block";
+        areaAssinatura.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+</script>
+
+</body>
+</html>
