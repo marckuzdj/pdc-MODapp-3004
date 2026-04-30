@@ -390,49 +390,76 @@ window.onload = function() {
 
 // --- 4. ROTINA DE LOGIN E CADASTRO ---
 // --- FUNÇÃO DE LOGIN COM SPINNER, VALIDAÇÃO DE TRANSPORTADORA E CASE-INSENSITIVE ---
-// --- LOGIN ADAPTADO PARA AMBIENTE EXTERNO (GITHUB) ---
-async function realizarLogin() {
-    const btn = document.querySelector("#screen-login .btn-primary");
-    const email = document.getElementById('login-user').value.trim().toLowerCase();
-    const senha = document.getElementById('login-pass').value.trim();
-    const transp = document.getElementById('login-transp').value;
-
-    if (!email || !senha || !transp) {
-        if(typeof tocarBeep === 'function') tocarBeep('erro');
-        return alert("Por favor, preencha todos os campos.");
-    }
-
-    btn.disabled = true;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<div class="spinner"></div> Autenticando...';
-
-    // Usamos a URL com todos os parâmetros
-    const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}&transp=${encodeURIComponent(transp)}`;
-
-    try {
-        const res = await fetch(url);
-        const data = await res.json(); // Se o backend usar responderJSON, isso funcionará!
-
-        if (data.authorized) {
-            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
-            alert("Bem-vindo(a), " + data.nome);
-            document.getElementById('usuario').value = data.nome;
-            if(document.getElementById('transp')) document.getElementById('transp').value = transp;
-            showScreen('screen-main');
-        } else {
+    // --- LOGIN ADAPTADO PARA AMBIENTE EXTERNO (GITHUB) ---
+    async function realizarLogin() {
+        // 1. Prevenção de duplo clique usando sua variável global de controle
+        if (typeof enviandoDados !== 'undefined' && enviandoDados) return;
+    
+        const btn = document.querySelector("#screen-login .btn-primary");
+        const emailField = document.getElementById('login-user');
+        const passField = document.getElementById('login-pass');
+        const transpField = document.getElementById('login-transp');
+    
+        // Validação e normalização (Case-Insensitive)
+        const email = emailField.value.trim().toLowerCase();
+        const senha = passField.value.trim();
+        const transp = transpField.value;
+    
+        if (!email || !senha || !transp) {
             if(typeof tocarBeep === 'function') tocarBeep('erro');
-            alert(data.error || "Dados incorretos.");
+            return alert("⚠️ Por favor, preencha E-mail, Senha e Transportadora.");
+        }
+    
+        // 2. Bloqueio visual e início do processo
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<div class="spinner"></div> Autenticando...';
+        
+        // Ativa trava global se existir
+        if (typeof enviandoDados !== 'undefined') enviandoDados = true;
+    
+        // URL preparada para buscar na Coluna E (lgnVinculo) do Backend
+        const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}&transp=${encodeURIComponent(transp)}`;
+    
+        try {
+            const res = await fetch(url);
+            const data = await res.json(); 
+    
+            if (data.authorized) {
+                // SUCESSO: Login (Col E), Senha (Col C) e Regional (Col I) coincidem
+                if(typeof tocarBeep === 'function') tocarBeep('sucesso');
+                
+                alert("✅ Bem-vindo(a), " + data.nome);
+                
+                // Injeta dados na tela principal (Conferente e Transportadora)
+                const campoUsuario = document.getElementById('usuario');
+                const campoTransp = document.getElementById('transp');
+                
+                if(campoUsuario) campoUsuario.value = data.nome;
+                if(campoTransp) campoTransp.value = transp;
+                
+                showScreen('screen-main');
+            } else {
+                // ERRO DE VALIDAÇÃO: (ex: senha errada ou transportadora não vinculada)
+                if(typeof tocarBeep === 'function') tocarBeep('erro');
+                alert(data.error || "❌ Dados incorretos. Verifique suas credenciais.");
+                
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        } catch (err) {
+            console.error("Erro técnico Apps Script:", err);
+            alert("🌐 Erro na comunicação. Verifique sua conexão ou o Deploy do Google.");
+            
             btn.disabled = false;
             btn.innerHTML = originalText;
+            if(typeof tocarBeep === 'function') tocarBeep('erro');
+        } finally {
+            // Libera a trava global
+            if (typeof enviandoDados !== 'undefined') enviandoDados = false;
         }
-    } catch (err) {
-        // Se o fetch falhar por CORS mesmo com os dados certos, o alerta avisará:
-        console.error("Erro técnico:", err);
-        alert("🌐 Erro na comunicação. Verifique se o Script do Google está como 'Qualquer pessoa'.");
-        btn.disabled = false;
-        btn.innerHTML = originalText;
     }
-}
+
 
 // --- NOVA FUNÇÃO: SOLICITAR RECUPERAÇÃO ---
 async function solicitarRecuperacao() {
