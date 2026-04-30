@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v6</h3>
+    <h3>Acesso v7</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -478,7 +478,7 @@ async function solicitarRecuperacao() {
 
 // --- FUNÇÃO DE CADASTRO COM SPINNER E TRAVA ---
 async function cadastrar() {
-    if (processandoCadastro) return; 
+    if (typeof processandoCadastro !== 'undefined' && processandoCadastro) return;
 
     const btn = document.getElementById('btn-cadastrar');
     const nome = document.getElementById('reg-nome').value.trim();
@@ -488,43 +488,39 @@ async function cadastrar() {
     const senha = document.getElementById('reg-pass').value.trim();
     const senha2 = document.getElementById('reg-pass2').value.trim();
 
-    if (!nome || !doc || !email || !transp || !senha) {
-        if(typeof tocarBeep === 'function') tocarBeep('erro');
-        return alert("⚠️ Por favor, preencha todos os campos.");
-    }
+    if (!nome || !doc || !email || !transp || !senha) return alert("⚠️ Preencha todos os campos!");
+    if (senha !== senha2) return alert("❌ As senhas não conferem!");
 
-    if (senha !== senha2) {
-        if(typeof tocarBeep === 'function') tocarBeep('erro');
-        return alert("❌ As senhas não conferem!");
-    }
-
+    // Ativa trava e visual
     processandoCadastro = true;
     btn.disabled = true;
     const originalText = btn.innerHTML;
     btn.innerHTML = '<div class="spinner"></div> Gravando Registro...';
 
     const url = `${urlSheets}?action=salvarNovoUsuario&nome=${encodeURIComponent(nome)}&documento=${encodeURIComponent(doc)}&email=${encodeURIComponent(email)}&transp=${encodeURIComponent(transp)}&senha=${encodeURIComponent(senha)}`;
-    
+
     try {
-        // Usamos 'no-cors' para evitar o erro de redirecionamento do Google no GitHub Pages
-        await fetch(url, { 
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-cache'
-        });
+        // --- MUDANÇA CHAVE: Usamos fetchJSONP para ler a resposta real ---
+        const resJson = await fetchJSONP(url);
 
-        // Como o modo 'no-cors' não permite ler o JSON de resposta, 
-        // aguardamos 1.5 segundos para garantir que o Google processou a gravação
-        setTimeout(() => {
-            if(typeof tocarBeep === 'function') tocarBeep('sucesso');
-            alert("✅ Cadastro Realizado!\nVocê será redirecionado para realizar o Login.");
-            location.reload(); 
-        }, 1500);
-
+        if (resJson.success) {
+            alert("✅ Cadastro realizado com sucesso!");
+            location.reload();
+        } else {
+            // AQUI ELE VAI MOSTRAR O ERRO REAL (ex: "E-mail já cadastrado!")
+            alert("❌ Erro: " + resJson.error);
+            
+            // Libera o botão para o usuário corrigir o dado
+            processandoCadastro = false;
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     } catch (err) {
-        console.error("Erro na comunicação:", err);
-        alert("🌐 Erro ao conectar com o servidor. Verifique sua internet.");
-        resetBotaoCadastro(btn, originalText);
+        console.error("Erro no envio:", err);
+        alert("🌐 Erro na comunicação com o servidor.");
+        processandoCadastro = false;
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 }
 
