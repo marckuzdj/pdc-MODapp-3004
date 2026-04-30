@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v1</h3>
+    <h3>Acesso v2</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -388,9 +388,30 @@ window.onload = function() {
         });
 };
 
-// --- 4. ROTINA DE LOGIN E CADASTRO ---
-// --- FUNÇÃO DE LOGIN COM SPINNER, VALIDAÇÃO DE TRANSPORTADORA E CASE-INSENSITIVE ---
-// --- LOGIN ADAPTADO PARA AMBIENTE EXTERNO (GITHUB) ---
+// --- FUNÇÃO AUXILIAR PARA BYPASS CORS ---
+function fetchJSONP(url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = "jsonp_cb_" + Math.round(100000 * Math.random());
+        const script = document.createElement('script');
+        
+        window[callbackName] = (data) => {
+            resolve(data);
+            document.body.removeChild(script);
+            delete window[callbackName];
+        };
+
+        script.onerror = () => {
+            reject(new Error("Erro de conexão com o servidor."));
+            document.body.removeChild(script);
+            delete window[callbackName];
+        };
+
+        script.src = `${url}${url.includes('?') ? '&' : '?'}callback=${callbackName}`;
+        document.body.appendChild(script);
+    });
+}
+
+// --- LOGIN ADAPTADO (CASE-INSENSITIVE + BYPASS CORS) ---
 async function realizarLogin() {
     const btn = document.querySelector("#screen-login .btn-primary");
     const email = document.getElementById('login-user').value.trim().toLowerCase();
@@ -406,33 +427,33 @@ async function realizarLogin() {
     const originalText = btn.innerHTML;
     btn.innerHTML = '<div class="spinner"></div> Autenticando...';
 
-    // Usamos a URL com todos os parâmetros
+    // URL com parâmetros para o Backend buscar na Coluna E
     const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}&transp=${encodeURIComponent(transp)}`;
 
     try {
-        const res = await fetch(url);
-        const data = await res.json(); // Se o backend usar responderJSON, isso funcionará!
+        // Chamada via JSONP para ignorar erro de CORS do GitHub
+        const data = await fetchJSONP(url);
 
         if (data.authorized) {
             if(typeof tocarBeep === 'function') tocarBeep('sucesso');
-            alert("Bem-vindo(a), " + data.nome);
+            alert("✅ Bem-vindo(a), " + data.nome);
             document.getElementById('usuario').value = data.nome;
             if(document.getElementById('transp')) document.getElementById('transp').value = transp;
             showScreen('screen-main');
         } else {
             if(typeof tocarBeep === 'function') tocarBeep('erro');
-            alert(data.error || "Dados incorretos.");
+            alert(data.error || "❌ Dados incorretos.");
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
     } catch (err) {
-        // Se o fetch falhar por CORS mesmo com os dados certos, o alerta avisará:
         console.error("Erro técnico:", err);
-        alert("🌐 Erro na comunicação. Verifique se o Script do Google está como 'Qualquer pessoa'.");
+        alert("🌐 Erro na comunicação com o servidor. Verifique sua internet.");
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
 }
+
 
 // --- NOVA FUNÇÃO: SOLICITAR RECUPERAÇÃO ---
 async function solicitarRecuperacao() {
