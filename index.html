@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v4</h3>
+    <h3>Acesso v5</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -389,7 +389,7 @@ window.onload = function() {
 };
 
 // --- 4. ROTINA DE LOGIN E CADASTRO ---
-// --- FUNÇÃO DE LOGIN COM SPINNER, VALIDAÇÃO DE TRANSPORTADORA E CASE-INSENSITIVE ---
+// --- FUNÇÃO DE LOGIN COM SPINNER, VALIDAÇÃO DE TRANSPORTADORA E CASE-INSENSITIVE TOTAL ---
 async function realizarLogin() {
     // 1. Trava global para evitar duplo clique
     if (typeof enviandoDados !== 'undefined' && enviandoDados) return;
@@ -398,9 +398,9 @@ async function realizarLogin() {
     const container = document.getElementById("screen-login");
     const btnLogin = container.querySelector(".btn-primary");
     
-    // 3. Normalização: Tudo para minúsculo e sem espaços
+    // 3. Normalização: Tudo para minúsculo e sem espaços (Incluso Senha)
     const inputEmail  = document.getElementById('login-user').value.trim().toLowerCase();
-    const inputPass   = document.getElementById('login-pass').value.trim();
+    const inputPass   = document.getElementById('login-pass').value.trim().toLowerCase(); // Senha agora ignora caixa
     const inputTransp = document.getElementById('login-transp').value.trim().toLowerCase();
 
     if (!inputEmail || !inputPass || !inputTransp) {
@@ -414,7 +414,7 @@ async function realizarLogin() {
     const textoOriginal = btnLogin.innerHTML;
     btnLogin.innerHTML = '<div class="spinner"></div> Autenticando...';
 
-    // 5. URL com parâmetros padronizados
+    // 5. URL com parâmetros padronizados (Todos em minúsculas)
     const url = `${urlSheets}?action=validarLogin&email=${encodeURIComponent(inputEmail)}&senha=${encodeURIComponent(inputPass)}&transp=${encodeURIComponent(inputTransp)}`;
 
     try {
@@ -427,7 +427,7 @@ async function realizarLogin() {
             
             // Injeta dados na tela principal
             document.getElementById('usuario').value = data.nome;
-            // Injetamos o valor original do Select (não o minúsculo) para o relatório
+            // Mantemos o valor original do Select para exibição/relatório se necessário
             document.getElementById('transp').value = document.getElementById('login-transp').value;
             
             showScreen('screen-main');
@@ -446,6 +446,7 @@ async function realizarLogin() {
         if (typeof enviandoDados !== 'undefined') enviandoDados = false;
     }
 }
+
 
 
 
