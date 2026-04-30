@@ -110,7 +110,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Acesso v20</h3>
+    <h3>Acesso v21</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -339,14 +339,14 @@ function showScreen(id) {
 }
 
 
-let html5QrCode; // Variável global mantida
+let html5QrCode; 
 
-// --- FUNÇÃO INICIAR (HÍBRIDA: CÂMERA 15FPS OU LEITOR USB) ---
+// --- FUNÇÃO INICIAR HÍBRIDA (CÂMERA 15FPS OU LEITOR USB) ---
 async function iniciarConferencia() {
     const btnIniciar = document.getElementById("btnIniciar");
     const readerDiv = document.getElementById("reader");
     const statusInfo = document.getElementById("status-info");
-    const containerUSB = document.getElementById("container-leitor-usb"); // ID sugerido no HTML anterior
+    const containerUSB = document.getElementById("container-leitor-usb");
     const inputUSB = document.getElementById("input-usb");
 
     if (!document.getElementById("romaneio").value) {
@@ -354,18 +354,22 @@ async function iniciarConferencia() {
         return;
     }
 
-    // Ativa áudio para os bips
     if (audioCtx.state === 'suspended') await audioCtx.resume();
 
-    // Reset visual inicial
+    // 1. Esconde o botão inicial
     btnIniciar.style.display = "none"; 
-    atualizarBarraProgresso();
 
-    // Detecção de dispositivo
+    // 2. RECUPERA O PROGRESSO JÁ SINCRONIZADO (Para não voltar a 0%)
+    const jaLidos = parseInt(document.getElementById("contador").innerText) || 0;
+    if (typeof atualizarBarraProgresso === "function") {
+        atualizarBarraProgresso(jaLidos); 
+    }
+
+    // 3. DETECÇÃO DE DISPOSITIVO
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     if (isMobile) {
-        // --- ROTINA MOBILE: CÂMERA ALTA VELOCIDADE ---
+        // --- ROTINA MOBILE (CÂMERA) ---
         if (containerUSB) containerUSB.style.display = "none";
         readerDiv.style.display = "block";
 
@@ -374,11 +378,7 @@ async function iniciarConferencia() {
         }
 
         html5QrCode = new Html5Qrcode("reader");
-        const config = { 
-            fps: 15, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0 
-        };
+        const config = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
 
         try {
             await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
@@ -389,27 +389,26 @@ async function iniciarConferencia() {
         }
 
     } else {
-        // --- ROTINA DESKTOP: LEITOR USB ---
+        // --- ROTINA DESKTOP (LEITOR USB) ---
         readerDiv.style.display = "none";
         if (containerUSB) {
             containerUSB.style.display = "block";
             statusInfo.innerText = "Aguardando leitura USB...";
             
-            // Foco e Listener para o Leitor USB
+            // Foca no input e escuta o "Enter" do leitor
             inputUSB.focus();
             inputUSB.onkeypress = function(e) {
-                if (e.which == 13) { // Tecla Enter enviada pelo leitor
+                if (e.which == 13) { // Captura o fim do bip (Enter)
                     const codigo = this.value.trim();
                     if (codigo) {
-                        // Chama a mesma rotina de sucesso da câmera
-                        onScanSuccess(codigo); 
-                        this.value = ""; // Limpa para o próximo
+                        onScanSuccess(codigo); // Reutiliza a rotina oficial de conferência
+                        this.value = ""; 
                         this.focus();
                     }
                 }
             };
 
-            // Mantém o foco no input se o usuário clicar fora
+            // Mantém o foco no campo caso o usuário clique fora
             document.addEventListener('click', () => {
                 if (containerUSB.style.display === "block") inputUSB.focus();
             });
@@ -417,6 +416,8 @@ async function iniciarConferencia() {
     }
 }
 
+
+    
 // --- 3. CARREGAMENTO INICIAL (WINDOW.ONLOAD) ---
 window.onload = function() {
     // Carregar Romaneios
